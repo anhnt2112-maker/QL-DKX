@@ -17,6 +17,8 @@ export const INITIAL_RECORDS: VehicleRecord[] = [
     micaFee: 50000,
     serviceFee: 500000,
     expectedRevenue: 1200000,
+    // Fix: Added missing required property 'taxImages'
+    taxImages: [],
   },
   {
     id: '2',
@@ -31,6 +33,8 @@ export const INITIAL_RECORDS: VehicleRecord[] = [
     micaFee: 50000,
     serviceFee: 1000000,
     expectedRevenue: 2500000,
+    // Fix: Added missing required property 'taxImages'
+    taxImages: [],
   },
   {
     id: '3',
@@ -47,6 +51,8 @@ export const INITIAL_RECORDS: VehicleRecord[] = [
     entryCost: 450000000,
     withdrawalCost: 5000000,
     expectedRevenue: 475000000,
+    // Fix: Added missing required property 'taxImages'
+    taxImages: [],
   }
 ];
 

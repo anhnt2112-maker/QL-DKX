@@ -19,8 +19,7 @@ const DATA = [
 export const StatsScreen: React.FC<StatsScreenProps> = ({ records, onBack }) => {
   const stats = useMemo(() => {
     let totalRevenue = 0;
-    let totalCosts = 0;
-    // Explicitly typed catProfit to ensure Object.entries results are correctly handled
+    let totalProfit = 0;
     const catProfit: Record<string, number> = {
       [CategoryType.HONDA_PT]: 0,
       [CategoryType.OLD_CAR]: 0,
@@ -28,15 +27,17 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ records, onBack }) => 
     };
 
     records.forEach(r => {
-      const costs = (r.micaFee || 0) + (r.serviceFee || 0) + (r.entryCost || 0) + (r.withdrawalCost || 0);
-      const profit = r.expectedRevenue - costs;
+      // Updated formula: Profit = Mica + Service Fee
+      const profit = (r.micaFee || 0) + (r.serviceFee || 0);
       
-      totalRevenue += r.expectedRevenue;
-      totalCosts += costs;
+      totalRevenue += r.expectedRevenue || 0;
+      totalProfit += profit;
       catProfit[r.category] += profit;
     });
 
-    const totalProfit = totalRevenue - totalCosts;
+    // Total Costs are inferred for the report display as Revenue - Profit 
+    // or we can calculate them explicitly if preferred, but profit is now fixed to mica+service.
+    const totalCosts = records.reduce((s, r) => s + (r.entryCost || 0) + (r.withdrawalCost || 0), 0);
     
     return { totalRevenue, totalCosts, totalProfit, catProfit };
   }, [records]);
@@ -93,7 +94,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ records, onBack }) => 
             </div>
             <span className="text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded font-bold">-2%</span>
           </div>
-          <p className="text-xs text-gray-400 mb-1">Tổng Chi phí</p>
+          <p className="text-xs text-gray-400 mb-1">Tổng Chi phí Nhập/Rút</p>
           <p className="font-bold text-slate-900">{stats.totalCosts.toLocaleString('vi-VN')} đ</p>
         </div>
       </div>
@@ -101,7 +102,7 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ records, onBack }) => 
       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm mb-6">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h3 className="font-bold text-slate-900">Xu hướng doanh thu</h3>
+            <h3 className="font-bold text-slate-900">Xu hướng lợi nhuận</h3>
             <p className="text-[10px] text-gray-400">Dữ liệu 4 tuần gần nhất</p>
           </div>
           <button className="text-gray-400"><MoreHorizontal size={20} /></button>
@@ -134,7 +135,6 @@ export const StatsScreen: React.FC<StatsScreenProps> = ({ records, onBack }) => 
         
         <div className="space-y-6">
           {Object.entries(stats.catProfit).map(([cat, profitVal], i) => {
-             // Cast to number to resolve "arithmetic operation" and "toLocaleString" errors
              const profit = profitVal as number;
              const percent = Math.round((profit / stats.totalProfit) * 100) || 0;
              const colors = ['bg-blue-600', 'bg-cyan-400', 'bg-purple-500'];

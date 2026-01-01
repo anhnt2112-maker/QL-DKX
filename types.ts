@@ -32,8 +32,8 @@ export interface VehicleRecord {
   withdrawalCost?: number;
   expectedRevenue: number;
   
-  // Images
-  taxImage?: string;
+  // Images (Base64 or URL)
+  taxImages: string[]; // Up to 2
   plateImage?: string;
   registrationImage?: string;
 }

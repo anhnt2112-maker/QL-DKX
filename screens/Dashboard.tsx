@@ -11,8 +11,9 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ records, onCreate, onViewAll }) => {
   const stats = useMemo(() => {
+    // Updated profit formula: totalProfit = mica + service fee across all records
     const totalProfit = records.reduce((sum, r) => {
-      const p = r.expectedRevenue - (r.micaFee + r.serviceFee + (r.entryCost || 0) + (r.withdrawalCost || 0));
+      const p = (r.micaFee || 0) + (r.serviceFee || 0);
       return sum + p;
     }, 0);
     const processing = records.filter(r => r.status !== RecordStatus.COMPLETED).length;

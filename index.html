@@ -143,7 +143,8 @@
         const Dashboard = ({ records, onCreate, onViewAll }) => {
             const stats = useMemo(() => {
                 const totalProfit = records.reduce((sum, r) => {
-                    const p = r.expectedRevenue - (r.micaFee + r.serviceFee + (r.entryCost || 0) + (r.withdrawalCost || 0));
+                    // New Profit Formula: mica + service fee
+                    const p = (r.micaFee || 0) + (r.serviceFee || 0);
                     return sum + p;
                 }, 0);
                 const processing = records.filter(r => r.status !== RecordStatus.COMPLETED).length;
@@ -220,22 +221,25 @@
 
                     <h3 className="font-bold text-lg text-slate-900 mb-4">Hoạt động mới nhất</h3>
                     <div className="space-y-4">
-                        {records.slice(0, 3).map((record) => (
-                            <div key={record.id} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl shadow-sm">
-                                <div className="flex items-center space-x-4">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                        record.status === RecordStatus.COMPLETED ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
-                                    }`}>
-                                        <Icon name={record.status === RecordStatus.COMPLETED ? "check" : "refresh-cw"} size={18} />
+                        {records.slice(0, 3).map((record) => {
+                             const profit = (record.micaFee || 0) + (record.serviceFee || 0);
+                             return (
+                                <div key={record.id} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl shadow-sm">
+                                    <div className="flex items-center space-x-4">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                            record.status === RecordStatus.COMPLETED ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
+                                        }`}>
+                                            <Icon name={record.status === RecordStatus.COMPLETED ? "check" : "refresh-cw"} size={18} />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-sm text-slate-900 truncate w-32">{record.customerName}</h4>
+                                            <p className="text-[10px] text-gray-400">{record.vehicleType} • {record.status}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h4 className="font-bold text-sm text-slate-900 truncate w-32">{record.customerName}</h4>
-                                        <p className="text-[10px] text-gray-400">{record.vehicleType} • {record.status}</p>
-                                    </div>
+                                    <span className="text-xs font-bold text-slate-900">+{ (profit / 1000).toFixed(0) }k</span>
                                 </div>
-                                <span className="text-xs font-bold text-slate-900">+{((record.expectedRevenue - (record.micaFee + record.serviceFee + (record.entryCost || 0) + (record.withdrawalCost || 0))) / 1000).toFixed(0)}k</span>
-                            </div>
-                        ))}
+                             );
+                        })}
                     </div>
                 </div>
             );
@@ -259,7 +263,8 @@
                 expectedRevenue: record?.expectedRevenue || 0,
             });
 
-            const profit = formData.expectedRevenue - (formData.micaFee + formData.serviceFee + formData.entryCost + formData.withdrawalCost);
+            // Profit formula update
+            const profit = (formData.micaFee || 0) + (formData.serviceFee || 0);
 
             const handleNum = (field, val) => {
                 const num = parseInt(val.replace(/\D/g, '')) || 0;
@@ -400,7 +405,7 @@
                 { name: 'CN', val: 3490 },
             ];
 
-            const total = records.reduce((s, r) => s + (r.expectedRevenue - (r.micaFee + r.serviceFee + (r.entryCost || 0) + (r.withdrawalCost || 0))), 0);
+            const total = records.reduce((s, r) => s + ( (r.micaFee || 0) + (r.serviceFee || 0) ), 0);
 
             return (
                 <div className="p-6 pb-24">
@@ -526,5 +531,4 @@
         root.render(<App />);
     </script>
 </body>
-    <script type="module" src="/index.tsx"></script>
 </html>

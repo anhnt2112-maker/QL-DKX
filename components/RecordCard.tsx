@@ -21,7 +21,8 @@ export const RecordCard: React.FC<RecordCardProps> = ({ record, onClick }) => {
     }
   };
 
-  const profit = record.expectedRevenue - (record.micaFee + record.serviceFee + (record.entryCost || 0) + (record.withdrawalCost || 0));
+  // Updated profit calculation: profit = mica + service fee
+  const profit = (record.micaFee || 0) + (record.serviceFee || 0);
 
   return (
     <div 
