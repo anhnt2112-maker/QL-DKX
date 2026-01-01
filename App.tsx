@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { CategoryType, RecordStatus, Screen, VehicleRecord } from './types';
 import { INITIAL_RECORDS } from './constants';
@@ -9,11 +9,37 @@ import { RecordForm } from './screens/RecordForm';
 import { SearchRecords } from './screens/SearchRecords';
 import { StatsScreen } from './screens/StatsScreen';
 
+const STORAGE_KEY = 'VEHICLE_PRO_DATA';
+
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('SPLASH');
-  const [records, setRecords] = useState<VehicleRecord[]>(INITIAL_RECORDS);
+  
+  // Khởi tạo state từ LocalStorage hoặc dùng INITIAL_RECORDS nếu trống
+  const [records, setRecords] = useState<VehicleRecord[]>(() => {
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    if (savedData) {
+      try {
+        return JSON.parse(savedData);
+      } catch (e) {
+        console.error("Lỗi khi tải dữ liệu từ LocalStorage", e);
+        return INITIAL_RECORDS;
+      }
+    }
+    return INITIAL_RECORDS;
+  });
+
   const [selectedRecordId, setSelectedRecordId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<CategoryType | null>(null);
+
+  // Theo dõi sự thay đổi của records để lưu vào LocalStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    } catch (e) {
+      console.warn("Dữ liệu quá lớn (có thể do ảnh), không thể lưu vào LocalStorage toàn bộ.", e);
+      // Có thể triển khai IndexedDB ở đây nếu cần lưu trữ ảnh dung lượng cao hơn
+    }
+  }, [records]);
 
   const selectedRecord = useMemo(() => 
     records.find(r => r.id === selectedRecordId), 
@@ -47,8 +73,10 @@ export default function App() {
   };
 
   const handleDeleteRecord = (id: string) => {
-    setRecords(prev => prev.filter(r => r.id !== id));
-    setCurrentScreen('DASHBOARD');
+    if (window.confirm("Bạn có chắc chắn muốn xóa hồ sơ này?")) {
+      setRecords(prev => prev.filter(r => r.id !== id));
+      setCurrentScreen('DASHBOARD');
+    }
   };
 
   // Screen Rendering
