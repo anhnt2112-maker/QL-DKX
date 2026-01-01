@@ -1,0 +1,5 @@
+{
+  "name": "Quản lý Xe Pro (React + Flutter Source)",
+  "description": "Dự án chứa cả mã nguồn React hiện tại và mã nguồn Flutter mới được chuyển đổi trong file flutter_app_source.dart.",
+  "requestFramePermissions": []
+}

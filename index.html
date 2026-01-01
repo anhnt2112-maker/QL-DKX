@@ -1,0 +1,529 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Xe Pro - All in One</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+    <!-- React & Babel for direct browser execution -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Recharts & Lucide Icons -->
+    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "recharts": "https://esm.sh/recharts@^3.6.0"
+  }
+}
+</script>
+</head>
+<body class="bg-gray-50 text-slate-900">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect } = React;
+        const { 
+            LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
+            ResponsiveContainer, AreaChart, Area 
+        } = Recharts;
+
+        // --- ENUMS & TYPES ---
+        const CategoryType = {
+            HONDA_PT: 'Honda PT',
+            OLD_CAR: 'Xe cũ',
+            EXTERNAL_CAR: 'Xe ngoài'
+        };
+
+        const RecordStatus = {
+            RECEIVED: 'Hồ sơ mới tiếp nhận',
+            TAX_PAYMENT: 'Đang đóng thuế',
+            PLATE_REGISTRATION: 'Đang bấm biển',
+            REGISTRATION_COMPLETE: 'Đăng ký hoàn tất',
+            COMPLETED: 'Hoàn thành'
+        };
+
+        // --- MOCK DATA ---
+        const INITIAL_RECORDS = [
+            {
+                id: '1',
+                customerName: 'Nguyễn Văn A',
+                saleStaff: 'Trần Thị B',
+                receivedDate: '2023-10-25',
+                vehicleType: 'Honda Vision',
+                category: CategoryType.HONDA_PT,
+                plateNumber: '30H-123.45',
+                status: RecordStatus.REGISTRATION_COMPLETE,
+                step: 4,
+                micaFee: 50000,
+                serviceFee: 500000,
+                expectedRevenue: 1200000,
+            },
+            {
+                id: '2',
+                customerName: 'Trần Văn C',
+                saleStaff: 'Lê Văn D',
+                receivedDate: '2023-10-26',
+                vehicleType: 'Toyota Vios',
+                category: CategoryType.EXTERNAL_CAR,
+                plateNumber: '29A-999.99',
+                status: RecordStatus.PLATE_REGISTRATION,
+                step: 3,
+                micaFee: 50000,
+                serviceFee: 1000000,
+                expectedRevenue: 2500000,
+            },
+            {
+                id: '3',
+                customerName: 'Phạm Thị E',
+                saleStaff: 'Trần Tuấn Anh',
+                receivedDate: '2023-10-24',
+                vehicleType: 'Mazda 3 2019',
+                category: CategoryType.OLD_CAR,
+                plateNumber: '30G-567.89',
+                status: RecordStatus.RECEIVED,
+                step: 1,
+                micaFee: 0,
+                serviceFee: 0,
+                entryCost: 450000000,
+                withdrawalCost: 5000000,
+                expectedRevenue: 475000000,
+            }
+        ];
+
+        // --- COMPONENTS ---
+
+        const Icon = ({ name, size = 24, className = "" }) => {
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [name]);
+            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+        };
+
+        const SplashScreen = ({ onComplete }) => (
+            <div className="h-screen bg-[#1a1111] flex flex-col items-center justify-between py-16 px-8 text-center">
+                <div className="flex-1 flex flex-col items-center justify-center space-y-8">
+                    <div className="w-24 h-24 bg-red-600 rounded-[28%] flex items-center justify-center shadow-2xl shadow-red-900/40 relative">
+                        <div className="w-12 h-12 bg-white/20 rounded-xl blur-sm absolute"></div>
+                        <Icon name="car" className="text-white relative z-10" size={40} />
+                    </div>
+                    <div>
+                        <h1 className="text-4xl font-bold text-white mb-2">Quản lý Xe</h1>
+                        <p className="text-gray-400 text-lg">Theo dõi đăng ký & Lợi nhuận</p>
+                    </div>
+                </div>
+                <div className="w-full space-y-6">
+                    <button 
+                        onClick={onComplete}
+                        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-5 rounded-3xl flex items-center justify-center space-x-2 transition-all transform active:scale-95 shadow-xl shadow-red-900/20"
+                    >
+                        <span className="text-lg">Bắt đầu ngay</span>
+                        <Icon name="arrow-right" size={24} />
+                    </button>
+                    <p className="text-gray-400 font-medium">Phiên bản 1.0.2</p>
+                </div>
+            </div>
+        );
+
+        const Dashboard = ({ records, onCreate, onViewAll }) => {
+            const stats = useMemo(() => {
+                const totalProfit = records.reduce((sum, r) => {
+                    const p = r.expectedRevenue - (r.micaFee + r.serviceFee + (r.entryCost || 0) + (r.withdrawalCost || 0));
+                    return sum + p;
+                }, 0);
+                const processing = records.filter(r => r.status !== RecordStatus.COMPLETED).length;
+                return { totalProfit, processing };
+            }, [records]);
+
+            return (
+                <div className="p-6 pb-24">
+                    <header className="flex justify-between items-center mb-6">
+                        <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                                <Icon name="user" size={20} className="text-orange-600" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500">Xin chào,</p>
+                                <h2 className="font-bold text-slate-900">Admin User</h2>
+                            </div>
+                        </div>
+                        <button className="p-2 bg-white rounded-xl shadow-sm border border-gray-100 relative">
+                            <Icon name="bell" size={20} />
+                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+                        </button>
+                    </header>
+
+                    <div className="bg-blue-600 rounded-3xl p-6 text-white shadow-xl shadow-blue-200 mb-8 relative overflow-hidden">
+                        <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <p className="text-sm opacity-80 mb-1">Lợi nhuận dự kiến tháng này</p>
+                                <h1 className="text-3xl font-bold">{stats.totalProfit.toLocaleString('vi-VN')}đ</h1>
+                            </div>
+                            <div className="bg-white/20 p-2 rounded-xl">
+                                <Icon name="trending-up" size={24} />
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-end mt-8">
+                            <div>
+                                <p className="text-xs opacity-80 mb-1">Đang xử lý</p>
+                                <p className="text-xl font-bold">{stats.processing} hồ sơ</p>
+                            </div>
+                            <button onClick={onViewAll} className="bg-white text-blue-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center">
+                                Chi tiết <Icon name="chevron-right" size={14} className="ml-1" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <h3 className="font-bold text-lg text-slate-900 mb-4">Danh mục quản lý</h3>
+                    <div className="grid grid-cols-1 gap-4 mb-8">
+                        <div onClick={() => onCreate(CategoryType.HONDA_PT)} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between active:scale-95 transition-transform cursor-pointer">
+                            <div className="flex items-center space-x-4">
+                                <div className="w-12 h-12 bg-red-50 text-red-600 rounded-xl flex items-center justify-center">
+                                    <Icon name="award" size={24} />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-slate-900">Honda PT</h4>
+                                    <p className="text-xs text-gray-500">Xe mới chính hãng</p>
+                                </div>
+                            </div>
+                            <Icon name="plus-circle" size={24} className="text-blue-600" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div onClick={() => onCreate(CategoryType.OLD_CAR)} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm active:scale-95 transition-transform cursor-pointer">
+                                <Icon name="archive" size={24} className="text-orange-600 mb-2" />
+                                <h4 className="font-bold text-slate-900">Xe cũ</h4>
+                                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Hàng tồn kho</p>
+                            </div>
+                            <div onClick={() => onCreate(CategoryType.EXTERNAL_CAR)} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm active:scale-95 transition-transform cursor-pointer">
+                                <Icon name="external-link" size={24} className="text-purple-600 mb-2" />
+                                <h4 className="font-bold text-slate-900">Xe ngoài</h4>
+                                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Hồ sơ dịch vụ</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 className="font-bold text-lg text-slate-900 mb-4">Hoạt động mới nhất</h3>
+                    <div className="space-y-4">
+                        {records.slice(0, 3).map((record) => (
+                            <div key={record.id} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl shadow-sm">
+                                <div className="flex items-center space-x-4">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                        record.status === RecordStatus.COMPLETED ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
+                                    }`}>
+                                        <Icon name={record.status === RecordStatus.COMPLETED ? "check" : "refresh-cw"} size={18} />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-sm text-slate-900 truncate w-32">{record.customerName}</h4>
+                                        <p className="text-[10px] text-gray-400">{record.vehicleType} • {record.status}</p>
+                                    </div>
+                                </div>
+                                <span className="text-xs font-bold text-slate-900">+{((record.expectedRevenue - (record.micaFee + record.serviceFee + (record.entryCost || 0) + (record.withdrawalCost || 0))) / 1000).toFixed(0)}k</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const RecordForm = ({ category, record, onSave, onCancel }) => {
+            const [formData, setFormData] = useState({
+                id: record?.id || Math.random().toString(36).substr(2, 9),
+                customerName: record?.customerName || '',
+                saleStaff: record?.saleStaff || '',
+                receivedDate: record?.receivedDate || new Date().toISOString().split('T')[0],
+                vehicleType: record?.vehicleType || '',
+                category: category,
+                plateNumber: record?.plateNumber || '',
+                status: record?.status || RecordStatus.RECEIVED,
+                step: record?.step || 1,
+                micaFee: record?.micaFee || 0,
+                serviceFee: record?.serviceFee || 0,
+                entryCost: record?.entryCost || 0,
+                withdrawalCost: record?.withdrawalCost || 0,
+                expectedRevenue: record?.expectedRevenue || 0,
+            });
+
+            const profit = formData.expectedRevenue - (formData.micaFee + formData.serviceFee + formData.entryCost + formData.withdrawalCost);
+
+            const handleNum = (field, val) => {
+                const num = parseInt(val.replace(/\D/g, '')) || 0;
+                setFormData(p => ({ ...p, [field]: num }));
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-50 flex flex-col">
+                    <header className="bg-white px-6 py-4 flex justify-between items-center border-b border-gray-100 sticky top-0 z-50">
+                        <button onClick={onCancel} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full">
+                            <Icon name="x" size={24} />
+                        </button>
+                        <h2 className="font-bold text-slate-900">Nhập liệu {category}</h2>
+                        <button onClick={() => onSave(formData)} className="text-blue-600 font-bold">Lưu</button>
+                    </header>
+
+                    <div className="p-6 space-y-6 pb-32">
+                        <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center">
+                                <Icon name="user" size={14} className="mr-2" /> Thông tin khách hàng
+                            </h3>
+                            <input 
+                                className="w-full bg-gray-50 rounded-2xl px-4 py-3 outline-none" 
+                                placeholder="Tên khách hàng"
+                                value={formData.customerName}
+                                onChange={e => setFormData(p => ({ ...p, customerName: e.target.value }))}
+                            />
+                            <div className="grid grid-cols-2 gap-4">
+                                <input 
+                                    type="date" 
+                                    className="w-full bg-gray-50 rounded-2xl px-4 py-3 outline-none"
+                                    value={formData.receivedDate}
+                                    onChange={e => setFormData(p => ({ ...p, receivedDate: e.target.value }))}
+                                />
+                                <input 
+                                    className="w-full bg-gray-50 rounded-2xl px-4 py-3 outline-none" 
+                                    placeholder="Sale"
+                                    value={formData.saleStaff}
+                                    onChange={e => setFormData(p => ({ ...p, saleStaff: e.target.value }))}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center">
+                                <Icon name="dollar-sign" size={14} className="mr-2" /> Tài chính & Lợi nhuận
+                            </h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-400 ml-2">PHÍ MICA</label>
+                                    <input 
+                                        className="w-full bg-gray-50 rounded-2xl px-4 py-3 outline-none text-right font-bold" 
+                                        value={formData.micaFee.toLocaleString('vi-VN')}
+                                        onChange={e => handleNum('micaFee', e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-bold text-gray-400 ml-2">PHÍ DỊCH VỤ</label>
+                                    <input 
+                                        className="w-full bg-gray-50 rounded-2xl px-4 py-3 outline-none text-right font-bold" 
+                                        value={formData.serviceFee.toLocaleString('vi-VN')}
+                                        onChange={e => handleNum('serviceFee', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-400 ml-2">DOANH THU DỰ KIẾN</label>
+                                <input 
+                                    className="w-full bg-green-50 text-green-700 rounded-2xl px-4 py-4 outline-none text-right font-black text-xl" 
+                                    value={formData.expectedRevenue.toLocaleString('vi-VN')}
+                                    onChange={e => handleNum('expectedRevenue', e.target.value)}
+                                />
+                            </div>
+                            <div className="pt-4 border-t border-dashed flex justify-between items-center">
+                                <span className="text-sm text-gray-500">Lợi nhuận ước tính:</span>
+                                <span className="text-xl font-black text-blue-600">{profit.toLocaleString('vi-VN')}đ</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="fixed bottom-6 left-6 right-6">
+                        <button onClick={() => onSave(formData)} className="w-full bg-blue-600 text-white py-5 rounded-3xl font-bold shadow-xl shadow-blue-200 active:scale-95 transition-transform">
+                            Lưu hồ sơ
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        const SearchRecords = ({ records, onEdit, onBack }) => {
+            const [query, setQuery] = useState('');
+            const filtered = records.filter(r => 
+                r.customerName.toLowerCase().includes(query.toLowerCase()) || 
+                r.plateNumber?.toLowerCase().includes(query.toLowerCase())
+            );
+
+            return (
+                <div className="p-6 pb-24">
+                    <header className="flex items-center space-x-4 mb-6">
+                        <button onClick={onBack} className="p-2 bg-white rounded-xl shadow-sm border border-gray-100">
+                            <Icon name="arrow-left" size={20} />
+                        </button>
+                        <h2 className="font-bold text-xl">Tra cứu hồ sơ</h2>
+                    </header>
+                    <div className="relative mb-6">
+                        <Icon name="search" size={20} className="absolute left-4 top-4 text-gray-400" />
+                        <input 
+                            className="w-full bg-white border border-gray-100 rounded-2xl pl-12 pr-4 py-4 outline-none focus:ring-2 focus:ring-blue-100 transition-all" 
+                            placeholder="Tìm tên khách hàng, biển số..."
+                            value={query}
+                            onChange={e => setQuery(e.target.value)}
+                        />
+                    </div>
+                    <div className="space-y-4">
+                        {filtered.map(r => (
+                            <div key={r.id} onClick={() => onEdit(r.id)} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center active:scale-95 transition-transform cursor-pointer">
+                                <div>
+                                    <h4 className="font-bold text-slate-900">{r.customerName}</h4>
+                                    <p className="text-xs text-gray-500">{r.vehicleType} • {r.plateNumber || 'Chưa biển'}</p>
+                                    <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded font-bold mt-2 inline-block uppercase">{r.category}</span>
+                                </div>
+                                <Icon name="chevron-right" size={20} className="text-gray-300" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const StatsScreen = ({ records, onBack }) => {
+            const chartData = [
+                { name: 'T2', val: 4000 },
+                { name: 'T3', val: 3000 },
+                { name: 'T4', val: 5000 },
+                { name: 'T5', val: 2780 },
+                { name: 'T6', val: 1890 },
+                { name: 'T7', val: 2390 },
+                { name: 'CN', val: 3490 },
+            ];
+
+            const total = records.reduce((s, r) => s + (r.expectedRevenue - (r.micaFee + r.serviceFee + (r.entryCost || 0) + (r.withdrawalCost || 0))), 0);
+
+            return (
+                <div className="p-6 pb-24">
+                    <header className="flex items-center space-x-4 mb-6">
+                        <button onClick={onBack} className="p-2 bg-white rounded-xl shadow-sm border border-gray-100">
+                            <Icon name="arrow-left" size={20} />
+                        </button>
+                        <h2 className="font-bold text-xl text-slate-900">Thống kê doanh thu</h2>
+                    </header>
+
+                    <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm mb-6">
+                        <p className="text-xs text-gray-400 font-bold uppercase mb-2">Tổng lợi nhuận tuần</p>
+                        <h1 className="text-3xl font-black text-slate-900 mb-6">{total.toLocaleString('vi-VN')}đ</h1>
+                        <div className="h-48 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={chartData}>
+                                    <defs>
+                                        <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <Area type="monotone" dataKey="val" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorVal)" />
+                                    <Tooltip />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
+                            <Icon name="file-text" size={20} className="text-blue-600 mb-2" />
+                            <h4 className="text-xl font-bold">{records.length}</h4>
+                            <p className="text-[10px] text-gray-400 font-bold">TỔNG HỒ SƠ</p>
+                        </div>
+                        <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
+                            <Icon name="clock" size={20} className="text-orange-600 mb-2" />
+                            <h4 className="text-xl font-bold">{records.filter(r => r.status !== RecordStatus.COMPLETED).length}</h4>
+                            <p className="text-[10px] text-gray-400 font-bold">ĐANG XỬ LÝ</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- MAIN APP ---
+        const App = () => {
+            const [currentScreen, setCurrentScreen] = useState('SPLASH');
+            const [records, setRecords] = useState(INITIAL_RECORDS);
+            const [selectedCategory, setSelectedCategory] = useState(null);
+            const [editRecordId, setEditRecordId] = useState(null);
+
+            const handleCreate = (cat) => {
+                setSelectedCategory(cat);
+                setEditRecordId(null);
+                setCurrentScreen('FORM');
+            };
+
+            const handleEdit = (id) => {
+                const r = records.find(x => x.id === id);
+                setSelectedCategory(r.category);
+                setEditRecordId(id);
+                setCurrentScreen('FORM');
+            };
+
+            const handleSave = (record) => {
+                setRecords(prev => {
+                    const idx = prev.findIndex(r => r.id === record.id);
+                    if (idx > -1) {
+                        const next = [...prev];
+                        next[idx] = record;
+                        return next;
+                    }
+                    return [record, ...prev];
+                });
+                setCurrentScreen('DASHBOARD');
+            };
+
+            const renderScreen = () => {
+                switch(currentScreen) {
+                    case 'SPLASH': return <SplashScreen onComplete={() => setCurrentScreen('DASHBOARD')} />;
+                    case 'DASHBOARD': return <Dashboard records={records} onCreate={handleCreate} onViewAll={() => setCurrentScreen('SEARCH')} />;
+                    case 'FORM': return <RecordForm category={selectedCategory} record={records.find(r => r.id === editRecordId)} onSave={handleSave} onCancel={() => setCurrentScreen('DASHBOARD')} />;
+                    case 'SEARCH': return <SearchRecords records={records} onEdit={handleEdit} onBack={() => setCurrentScreen('DASHBOARD')} />;
+                    case 'STATS': return <StatsScreen records={records} onBack={() => setCurrentScreen('DASHBOARD')} />;
+                    default: return <Dashboard records={records} onCreate={handleCreate} onViewAll={() => setCurrentScreen('SEARCH')} />;
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-100 flex justify-center">
+                    <div className="w-full max-w-md bg-white min-h-screen relative flex flex-col shadow-2xl overflow-hidden">
+                        <div className="flex-1 overflow-y-auto no-scrollbar">
+                            {renderScreen()}
+                        </div>
+                        
+                        {currentScreen !== 'SPLASH' && currentScreen !== 'FORM' && (
+                            <nav className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-gray-100 px-8 py-4 flex justify-between items-center z-50">
+                                <button onClick={() => setCurrentScreen('DASHBOARD')} className={`flex flex-col items-center space-y-1 ${currentScreen === 'DASHBOARD' ? 'text-blue-600' : 'text-gray-400'}`}>
+                                    <Icon name="home" size={24} />
+                                    <span className="text-[10px] font-bold uppercase">Chính</span>
+                                </button>
+                                <button onClick={() => setCurrentScreen('SEARCH')} className={`flex flex-col items-center space-y-1 ${currentScreen === 'SEARCH' ? 'text-blue-600' : 'text-gray-400'}`}>
+                                    <Icon name="search" size={24} />
+                                    <span className="text-[10px] font-bold uppercase">Tra cứu</span>
+                                </button>
+                                <button onClick={() => setCurrentScreen('STATS')} className={`flex flex-col items-center space-y-1 ${currentScreen === 'STATS' ? 'text-blue-600' : 'text-gray-400'}`}>
+                                    <Icon name="bar-chart-2" size={24} />
+                                    <span className="text-[10px] font-bold uppercase">Báo cáo</span>
+                                </button>
+                                <button className="flex flex-col items-center space-y-1 text-gray-400">
+                                    <Icon name="settings" size={24} />
+                                    <span className="text-[10px] font-bold uppercase">Cài đặt</span>
+                                </button>
+                            </nav>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
